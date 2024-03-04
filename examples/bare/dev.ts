@@ -1,9 +1,9 @@
-import {create} from 'vxrn';
+import { create } from 'vxrn';
 
 dev();
 
 async function dev() {
-  const {viteServer, start, stop} = await create({
+  const { viteServer, start, stop } = await create({
     root: process.cwd(),
     host: '127.0.0.1',
     webConfig: {
@@ -14,7 +14,7 @@ async function dev() {
     },
   });
 
-  const {closePromise} = await start();
+  const { closePromise } = await start();
 
   viteServer.printUrls();
 

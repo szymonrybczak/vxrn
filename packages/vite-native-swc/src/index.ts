@@ -58,6 +58,10 @@ export default (_options?: Options): PluginOption[] => {
                   name: `native-transform`,
 
                   async transform(code, id) {
+                    // if (id.includes('.png')) {
+                    // return
+                    // }
+                    console.log('native-swc', id)
                     let out = await transform(code, {
                       filename: id,
                       swcrc: false,
@@ -68,10 +72,10 @@ export default (_options?: Options): PluginOption[] => {
                         parser: id.endsWith('.tsx')
                           ? { syntax: 'typescript', tsx: true, decorators: true }
                           : id.endsWith('.ts')
-                          ? { syntax: 'typescript', tsx: false, decorators: true }
-                          : id.endsWith('.jsx')
-                          ? { syntax: 'ecmascript', jsx: true }
-                          : { syntax: 'ecmascript' },
+                            ? { syntax: 'typescript', tsx: false, decorators: true }
+                            : id.endsWith('.jsx')
+                              ? { syntax: 'ecmascript', jsx: true }
+                              : { syntax: 'ecmascript' },
                         transform: {
                           useDefineForClassFields: true,
                           react: {
@@ -200,10 +204,10 @@ export const transformForBuild = async (id: string, code: string) => {
       parser: id.endsWith('.tsx')
         ? { syntax: 'typescript', tsx: true, decorators: true }
         : id.endsWith('.ts')
-        ? { syntax: 'typescript', tsx: false, decorators: true }
-        : id.endsWith('.jsx')
-        ? { syntax: 'ecmascript', jsx: true }
-        : { syntax: 'ecmascript' },
+          ? { syntax: 'typescript', tsx: false, decorators: true }
+          : id.endsWith('.jsx')
+            ? { syntax: 'ecmascript', jsx: true }
+            : { syntax: 'ecmascript' },
       transform: {
         useDefineForClassFields: true,
         react: {
@@ -226,13 +230,13 @@ export const transformWithOptions = async (
   const parser: ParserConfig | undefined = id.endsWith('.tsx')
     ? { syntax: 'typescript', tsx: true, decorators }
     : id.endsWith('.ts')
-    ? { syntax: 'typescript', tsx: false, decorators }
-    : id.endsWith('.jsx')
-    ? { syntax: 'ecmascript', jsx: true }
-    : id.endsWith('.mdx')
-    ? // JSX is required to trigger fast refresh transformations, even if MDX already transforms it
-      { syntax: 'ecmascript', jsx: true }
-    : undefined
+      ? { syntax: 'typescript', tsx: false, decorators }
+      : id.endsWith('.jsx')
+        ? { syntax: 'ecmascript', jsx: true }
+        : id.endsWith('.mdx')
+          ? // JSX is required to trigger fast refresh transformations, even if MDX already transforms it
+          { syntax: 'ecmascript', jsx: true }
+          : undefined
   if (!parser) return
 
   let result: Output

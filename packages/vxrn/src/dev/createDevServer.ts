@@ -1,8 +1,10 @@
 import mime from 'mime/lite'
+import { join } from 'path'
 
 import { HMRListener, StartOptions } from '../types'
 import { DEFAULT_PORT } from '../utils/constants'
 import { Server, createServer } from '../vendor/repack/dev-server/src'
+import { readFile } from 'fs-extra'
 
 export async function createDevServer(
   options: {
@@ -89,11 +91,20 @@ export async function createDevServer(
         compiler: {
           getAsset: async (filename, platform, sendProgress) => {
             console.info('[GET] - ', filename)
-            if (filename === 'index.bundle') {
-              return await getIndexBundle()
+
+            let file: string | Buffer
+
+            try {
+              if (filename === 'index.bundle') {
+                file = await getIndexBundle()
+              } else {
+
+                file = await readFile(join(options.root, 'dist', filename))
+              }
+            } catch {
+              throw new Error("File not found!")
             }
-            return ''
-            // return (await compiler.getAsset(filename, platform, sendProgress)).data
+            return file
           },
 
           getMimeType: (filename) => {
@@ -103,13 +114,6 @@ export async function createDevServer(
           inferPlatform: (uri) => {
             return 'ios'
 
-            const url = new URL(uri, 'protocol://domain')
-            if (!url.searchParams.get('platform')) {
-              const [, platform] = /^\/(.+)\/.+$/.exec(url.pathname) ?? []
-              return platform
-            }
-
-            return undefined
           },
         },
 

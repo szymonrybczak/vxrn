@@ -1,4 +1,4 @@
-import { dirname } from 'path'
+import { dirname, extname } from 'path'
 
 import { parse } from 'es-module-lexer'
 import { OutputOptions } from 'rollup'
@@ -18,6 +18,18 @@ const extensions = [
   '.tsx',
   '.mjs',
 ]
+
+const SCALABLE_ASSETS = [
+  'bmp',
+  'gif',
+  'jpg',
+  'jpeg',
+  'png',
+  'psd',
+  'svg',
+  'webp',
+  'tiff',
+];
 
 export function nativePlugin(options: {
   root: string
@@ -39,7 +51,7 @@ export function nativePlugin(options: {
 
       config.build.modulePreload = { polyfill: false }
       // Ensures that even very large assets are inlined in your JavaScript.
-      config.build.assetsInlineLimit = 100000000
+      // config.build.assetsInlineLimit = 100000000
       // Avoid warnings about large chunks.
       config.build.chunkSizeWarningLimit = 100000000
       // Emit all CSS as a single file, which `vite-plugin-singlefile` can then inline.
@@ -70,23 +82,6 @@ export function nativePlugin(options: {
 
       config.optimizeDeps.esbuildOptions.loader ??= {}
       config.optimizeDeps.esbuildOptions.loader['.js'] = 'jsx'
-
-      config.optimizeDeps.esbuildOptions.plugins.push({
-        name: 'react-native-assets',
-        setup(build) {
-          build.onResolve(
-            {
-              filter: /\.(png|jpg|gif|webp)$/,
-            },
-            async ({ path, namespace }) => {
-              return {
-                path: '',
-                external: true,
-              }
-            }
-          )
-        },
-      })
 
       config.build.rollupOptions ??= {}
 
@@ -130,9 +125,10 @@ export function nativePlugin(options: {
           name: `force-export-all`,
 
           async transform(code, id) {
-            // if (!id.includes('/node_modules/')) {
-            //   return
-            // }
+            if (!id.includes('/node_modules/') || id.includes('.png')) {
+              return
+            }
+            console.log('nativePlugin id', id)
 
             try {
               const [imports, exports] = parse(code)
@@ -183,12 +179,27 @@ export function nativePlugin(options: {
       const updateOutputOptions = (out: OutputOptions) => {
         out.preserveModules = true
 
+        out.assetFileNames = (assetInfo) => {
+          if (assetInfo.name) {
+            const extension = extname(assetInfo.name)
+
+            if (new RegExp(`\\.(${SCALABLE_ASSETS.join('|')})$`).test(extension)) {
+              return `assets/[name][extname]`;
+            }
+          }
+
+          return ''
+        }
+
         // this fixes some warnings but breaks import { default as config }
         // out.exports = 'named'
+        out.entryFileNames = (elo) => {
+          // for some reason asset.png is getting here two times
+          if (new RegExp(`\\.(${SCALABLE_ASSETS.join('|')})$`).test(extname(elo.name))) {
+            return `assets/[name]`;
+          }
 
-        out.entryFileNames = (chunkInfo) => {
-          // ensures we have clean names for our require paths
-          return '[name].js'
+          return `[name].js`;
         }
         // Ensure that as many resources as possible are inlined.
         // out.inlineDynamicImports = true
@@ -198,8 +209,6 @@ export function nativePlugin(options: {
       }
 
       if (Array.isArray(config.build.rollupOptions.output)) {
-        for (const o in config.build.rollupOptions.output)
-          updateOutputOptions(o as OutputOptions)
       } else {
         updateOutputOptions(config.build.rollupOptions.output as OutputOptions)
       }

@@ -162,13 +162,12 @@ export const create = async (options: StartOptions) => {
   }
 
   const viteServer = await createServer(serverConfig)
-
+  // add here a proper loader for .png and other files
   // this fakes vite into thinking its loading files, so it hmrs in native mode despite not requesting
   viteServer.watcher.addListener('change', async (path) => {
     const id = path.replace(process.cwd(), '')
-    if (!id.endsWith('tsx') && !id.endsWith('jsx')) {
-      return
-    }
+    // TODO: Assets are not dynamically resolved
+
     // just so it thinks its loaded
     try {
       void viteServer.transformRequest(id)
@@ -295,6 +294,7 @@ export const create = async (options: StartOptions) => {
     } as const
 
     async function babelReanimated(input: string, filename: string) {
+      console.log('babel reanimated', filename)
       return await new Promise<string>((res, rej) => {
         babel.transform(
           input,
@@ -320,10 +320,30 @@ export const create = async (options: StartOptions) => {
 
           async transform(code, id) {
             if (code.includes('worklet')) {
-              const out = await babelReanimated(code, id)
-              return out
+              return await babelReanimated(code, id)
             }
+            return
           },
+        },
+        {
+          name: 'assets',
+          async transform(code, id) {
+            if (id.includes('.png')) {
+              return `
+              const AssetRegistry = require('react-native/Libraries/Image/AssetRegistry');
+              export default AssetRegistry.registerAsset({
+                __packager_asset: true,
+                scales: [1], 
+                name: ${JSON.stringify('rnw.png')},
+                type: ${JSON.stringify('png')},
+                hash: ${JSON.stringify('oasdjfopajisdfopiasdjf')},
+                httpServerLocation: '/assets/rnw.png',
+                fileSystemLocation: '/Users/szymonrybczak/'
+              });
+              
+              `
+            }
+          }
         },
 
         viteRNClientPlugin,
@@ -357,6 +377,10 @@ export const create = async (options: StartOptions) => {
             format: 'cjs',
           },
         },
+      },
+
+      optimizeDeps: {
+        include: ['react-native']
       },
 
       mode: 'development',
@@ -396,7 +420,7 @@ export const create = async (options: StartOptions) => {
           return `
 ___modules___["${outputModule.fileName}"] = ((exports, module) => {
   const require = createRequire(${JSON.stringify(importsMap, null, 2)})
-
+  console.log('xd')
   ${outputModule.code}
 })
 
